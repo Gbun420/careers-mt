@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>careers.mt | Find jobs in Malta. Get hired faster.</title>
+    
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap" rel="stylesheet">
+    
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore-compat.js"></script>
+    <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check-compat.js"></script>
+
+    <script src="firebase-config.js"></script>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="logo clickable-logo" onclick="switchView('home')">careers<span>.mt</span></div>
+        
+        <!-- Public Links -->
+        <div class="nav-links-group public-flow">
+            <a href="#jobs" onclick="switchView('jobs')">Find Jobs</a>
+            <a href="#employer" onclick="switchView('employer-home')">Hire Talent</a>
+        </div>
+
+        <!-- Candidate-Only Links -->
+        <div class="nav-links-group candidate-flow hidden">
+            <a href="#jobs" onclick="switchView('jobs')">Jobs</a>
+            <a href="#candidate-applications" onclick="switchView('candidate-applications')">Applications</a>
+        </div>
+
+        <!-- Employer-Only Links -->
+        <div class="nav-links-group employer-flow hidden">
+            <a href="#employer-dashboard" onclick="switchView('employer-dashboard')">Dashboard</a>
+            <a href="#employer-jobs" onclick="switchView('employer-jobs')">My Jobs</a>
+            <a href="#post-job" onclick="switchView('post-job')">Post Job</a>
+        </div>
+
+        <div class="nav-controls">
+            <button id="btn-login" class="btn-neuro btn-sm" onclick="showAuthModal()">Login / Register</button>
+            <span id="user-info" class="mt-text hidden"></span>
+            <button id="btn-logout" class="btn-neuro btn-sm btn-outline hidden" onclick="logout()">Logout</button>
+        </div>
+    </nav>
+
+    <main class="bento-grid" id="main-view">
+        <!-- 🧭 LANDING PAGE -->
+        <section class="bento-card hero-bento active-view page-view" id="home">
+            <div class="hero-content">
+                <h1>Find jobs in Malta. <br>Get hired <span>faster</span>.</h1>
+                <p>Smart matching. No ghosting. Real opportunities.</p>
+                <div class="gateway-actions mt-2 gateway-actions-left">
+                    <button class="btn-neuro" onclick="switchView('jobs')">Find Jobs</button>
+                    <button class="btn-neuro btn-secondary" onclick="switchView('employer-home')">Hire Talent</button>
+                </div>
+            </div>
+            
+            <div class="social-proof mt-2">
+                <p class="mt-text">Trusted by the community: <strong>500+</strong> candidates placed | <strong>50+</strong> Maltese companies hiring</p>
+            </div>
+            
+            <div class="how-it-works mt-2">
+                <div>
+                    <h4 class="section-title-primary">For Candidates</h4>
+                    <ol class="steps-list">
+                        <li>Upload CV</li>
+                        <li>Get matched</li>
+                        <li>Apply in 1 click</li>
+                    </ol>
+                </div>
+                <div>
+                    <h4 class="section-title-accent">For Employers</h4>
+                    <ol class="steps-list">
+                        <li>Create job</li>
+                        <li>Set budget</li>
+                        <li>Receive qualified applicants</li>
+                    </ol>
+                </div>
+            </div>
+        </section>
+
+        <!-- 👤 CANDIDATE UX -->
+        <!-- Jobs Page -->
+        <section class="bento-card hero-bento hidden-view page-view" id="jobs">
+            <div class="jobs-layout">
+                <div class="filters">
+                    <h3>Filters</h3>
+                    <div class="form-group mt-2">
+                        <label for="job-search">Search</label>
+                        <input type="text" id="job-search" placeholder="Title or keyword...">
+                    </div>
+                    <div class="form-group mt-2">
+                        <label for="job-location">Location</label>
+                        <select id="job-location" name="job-location"><option>All Malta</option><option>Valletta</option><option>Sliema</option></select>
+                    </div>
+                </div>
+                <div class="job-list">
+                    <h3>Job Listings</h3>
+                    <div id="jobs-container" class="mt-2">
+                        <!-- Jobs injected here -->
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Candidate Applications Page -->
+        <section class="bento-card hero-bento hidden-view page-view" id="candidate-applications">
+            <h3>My Applications</h3>
+            <div id="applications-list" class="mt-2"></div>
+        </section>
+
+
+        <!-- 🧑‍💼 EMPLOYER UX -->
+        <section class="bento-card hero-bento hidden-view page-view" id="employer-home">
+            <h1>Hire qualified candidates fast.</h1>
+            <p>Access the best talent pool in Malta with transparent pricing.</p>
+            <button class="btn-neuro mt-2" onclick="showAuthModal('EMPLOYER')">Employer Login</button>
+        </section>
+
+        <!-- Employer Dashboard -->
+        <section class="bento-card hero-bento hidden-view page-view" id="employer-dashboard">
+            <h3>Employer Dashboard</h3>
+            <div class="dashboard-metrics">
+                <div class="bento-card"><h4>Active Jobs</h4><p class="mt-text stat-value" id="stat-active-jobs">0</p></div>
+                <div class="bento-card"><h4>Applicants</h4><p class="mt-text stat-value" id="stat-applicants">0</p></div>
+                <div class="bento-card"><h4>Spend</h4><p class="mt-text stat-value" id="stat-spend">€0.00</p></div>
+            </div>
+            <div class="mt-2">
+                <button class="btn-neuro" onclick="switchView('post-job')">Create New Job</button>
+            </div>
+        </section>
+
+        <section class="bento-card hero-bento hidden-view page-view" id="employer-jobs">
+            <h3>My Jobs</h3>
+            <div id="employer-jobs-list" class="mt-2"></div>
+        </section>
+
+        <!-- Create Job -->
+        <section class="bento-card hero-bento hidden-view page-view" id="post-job">
+            <h3>Create Job</h3>
+            <form id="post-job-form" class="mt-2">
+                <!-- SECTION 1: Job Basics -->
+                <h4 class="section-title-primary">1. Job Basics</h4>
+                <div class="form-group mt-2">
+                    <label for="post-title">Job Title *</label>
+                    <input type="text" id="post-title" required placeholder="e.g. Frontend Developer">
+                </div>
+                <div class="form-group mt-2">
+                    <label for="post-company">Company Name *</label>
+                    <input type="text" id="post-company" required placeholder="e.g. Valletta Labs">
+                </div>
+                <div class="form-row mt-2">
+                    <div class="form-group">
+                        <label for="post-location">Location *</label>
+                        <input type="text" id="post-location" required placeholder="e.g. Sliema">
+                    </div>
+                    <div class="form-group">
+                        <label for="post-type">Employment Type *</label>
+                        <select id="post-type" required>
+                            <option value="full-time">Full-time</option>
+                            <option value="part-time">Part-time</option>
+                            <option value="internship">Internship</option>
+                        </select>
+                    </div>
+                </div>
+                <div class="form-row mt-2">
+                    <div class="form-group">
+                        <label for="post-salary-min">Min Salary (€) *</label>
+                        <input type="number" id="post-salary-min" required placeholder="35000">
+                    </div>
+                    <div class="form-group">
+                        <label for="post-salary-max">Max Salary (€) *</label>
+                        <input type="number" id="post-salary-max" required placeholder="55000">
+                    </div>
+                </div>
+
+                <!-- SECTION 2: Description -->
+                <h4 class="mt-2 section-title-primary">2. Description</h4>
+                <div class="form-group mt-2">
+                    <div class="jd-header">
+                        <label for="post-desc">Job Description *</label>
+                        <button type="button" class="btn-neuro btn-sm btn-secondary" id="btn-ai-jd">Insert sample draft</button>
+                    </div>
+                    <textarea id="post-desc" required rows="6" minlength="50" placeholder="Minimum 50 characters..."></textarea>
+                </div>
+
+                <!-- SECTION 3: Knockout Questions -->
+                <h4 class="mt-2 section-title-primary">3. Knockout Questions</h4>
+                <div class="form-group mt-2">
+                    <input type="text" id="ko-1" placeholder="Question 1 (e.g. Have right to work in Malta?)">
+                    <div class="mt-1 ko-flags">
+                        <label class="ko-flag"><input type="checkbox" id="ko-1-required"> Required</label>
+                        <label class="ko-flag"><input type="checkbox" id="ko-1-reject"> Reject if No</label>
+                    </div>
+                </div>
+
+                <!-- SECTION 4: Pricing Model -->
+                <h4 class="mt-2 section-title-primary">4. Pricing Model</h4>
+                <div class="form-group mt-2 pricing-grid">
+                    <label class="bento-card pricing-option">
+                        <input type="radio" name="pricing" value="free" checked onchange="toggleBudget(false)">
+                        <strong>Free (€0)</strong><br>
+                        <span class="mt-text">Limited visibility</span>
+                    </label>
+                    <label class="bento-card pricing-option pricing-option--highlight">
+                        <input type="radio" name="pricing" value="ppqa" onchange="toggleBudget(true)">
+                        <strong>PPQA (€12)</strong><br>
+                        <span class="mt-text">Per qualified applicant</span>
+                    </label>
+                    <label class="bento-card pricing-option">
+                        <input type="radio" name="pricing" value="executive" onchange="toggleBudget(false)">
+                        <strong>Executive (€250)</strong><br>
+                        <span class="mt-text">Per interview</span>
+                    </label>
+                </div>
+
+                <!-- SECTION 5: Budget Control -->
+                <div id="budget-section" class="hidden mt-2">
+                    <h4 class="mt-2 section-title-primary">5. Budget Control</h4>
+                    <div class="form-group mt-2">
+                        <label for="post-budget">Budget Cap (€) *</label>
+                        <input type="number" id="post-budget" placeholder="150" min="12">
+                    </div>
+                </div>
+
+                <div class="mt-2 form-errors" id="form-errors"></div>
+                <button type="submit" id="btn-publish" class="btn-neuro mt-2 w-full btn-large">Publish Job</button>
+            </form>
+        </section>
+
+    </main>
+
+    <!-- Auth Modal -->
+    <div id="auth-modal" class="modal-overlay hidden">
+        <div class="bento-card modal-content-card modal-content-auth">
+            <h3>Login / Register</h3>
+            <p class="mt-text mt-1 mb-2">Candidates can sign up instantly. Employer access requires an approved account.</p>
+            <div class="form-group mt-2">
+                <button class="btn-neuro w-full" onclick="login('CANDIDATE')">I am a Candidate</button>
+                <button class="btn-neuro btn-secondary w-full mt-2" onclick="login('EMPLOYER')">I am an Employer</button>
+                <button class="btn-neuro btn-outline w-full mt-2" onclick="document.getElementById('auth-modal').classList.add('hidden')">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal for Applying -->
+    <div id="apply-modal" class="modal-overlay hidden">
+        <div class="bento-card modal-content-card modal-content-apply">
+            <h3>Submit Application</h3>
+            <div class="form-group mt-2">
+                <label for="resume-text">Upload CV OR paste text below:</label>
+                <textarea id="resume-text" rows="8" placeholder="Paste resume details..."></textarea>
+            </div>
+            <div id="apply-ko-questions" class="mt-2 form-group"></div>
+            <div class="modal-actions mt-2">
+                <button class="btn-neuro btn-secondary flex-1" onclick="document.getElementById('apply-modal').classList.add('hidden')">Cancel</button>
+                <button class="btn-neuro flex-2" id="submit-application">Submit Application</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
+    <script type="module" src="script.js"></script>
+</body>
+</html>

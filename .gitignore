@@ -1,0 +1,27 @@
+# Node
+node_modules
+dist
+.next
+.vercel
+build
+
+# Environment
+.env
+.env.local
+.env.*.local
+
+# Firebase
+.firebase
+firebase-debug.log
+firebase-debug.*.log
+firestore-debug.log
+
+# IDEs
+.vscode
+.idea
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db

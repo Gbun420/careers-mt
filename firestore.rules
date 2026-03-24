@@ -1,0 +1,123 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ----------------------------------------------------------
+    // Helper functions
+    // ----------------------------------------------------------
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    // request.auth.uid must match the supplied userId
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    // Role is stored in /users/{uid} document (simple, client-friendly)
+    function hasRole(role) {
+      return isSignedIn() &&
+        exists(/databases/$(database)/documents/users/$(request.auth.uid)) &&
+        get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
+    }
+
+    function isAdmin()   { return hasRole('ADMIN'); }
+    function isEmployer(){ return hasRole('EMPLOYER'); }
+    function isCandidate(){ return hasRole('CANDIDATE'); }
+
+    // ----------------------------------------------------------
+    // USERS (CANDIDATE / EMPLOYER) – each user document lives under /users/{uid}
+    // ----------------------------------------------------------
+    match /users/{userId} {
+      // Users can read/write only their own doc, admins can read/write any
+      allow read: if isOwner(userId) || isAdmin();
+
+      allow create: if isOwner(userId) &&
+        request.resource.data.role in ['CANDIDATE','EMPLOYER'] &&
+        request.resource.data.keys().hasOnly(['role','createdAt','updatedAt','displayName','email']);
+
+      allow update: if (
+          (isOwner(userId) && request.resource.data.role in ['CANDIDATE','EMPLOYER']) ||
+          (isAdmin() && request.resource.data.role in ['CANDIDATE','EMPLOYER','ADMIN'])
+        ) &&
+        request.resource.data.diff(resource.data).affectedKeys()
+          .hasOnly(['role','createdAt','updatedAt','displayName','email']);
+    }
+
+    // ----------------------------------------------------------
+    // JOBS
+    // ----------------------------------------------------------
+    match /jobs/{jobId} {
+      // Anyone can read an active job; admins can read anything
+      allow read: if resource.data.status == 'active' || isAdmin();
+
+      // Only EMPLOYER or ADMIN can create a job – salary fields are required
+      allow create: if (isEmployer() || isAdmin()) &&
+                     request.resource.data.employerId == request.auth.uid &&
+                     request.resource.data.salaryMin != null &&
+                     request.resource.data.salaryMax != null &&
+                     request.resource.data.salaryMin > 0 &&
+                     request.resource.data.salaryMax >= request.resource.data.salaryMin;
+
+      // Updates are allowed for the owning employer or admin; only a white‑list of fields may change
+      allow update: if (isAdmin() || (isEmployer() && request.auth.uid == resource.data.employerId)) &&
+                     request.resource.data.diff(resource.data).affectedKeys()
+                       .hasOnly(['status','title','description','salaryMin','salaryMax','location','type','pricing','budgetCap','updatedAt','companyName']);
+
+      // Only admins can delete a job
+      allow delete: if isAdmin();
+    }
+
+    // ----------------------------------------------------------
+    // APPLICATIONS
+    // ----------------------------------------------------------
+    match /applications/{applicationId} {
+      // Candidates can read only their own applications
+      // Employers can read applications belonging to jobs they own
+      // Admins can read any application
+      allow read: if isSignedIn() && (
+                isOwner(resource.data.candidateId) ||
+                isAdmin() ||
+                (isEmployer() && request.auth.uid == resource.data.employerId));
+
+      // Only candidates can create a new application; they must be the candidate themselves
+      allow create: if isCandidate() &&
+                     request.resource.data.candidateId == request.auth.uid &&
+                     request.resource.data.employerId != null &&
+                     request.resource.data.status == 'applied';
+
+      // Updates are allowed:
+      //   – Candidate can withdraw his own application
+      //   – Employer (owner of the job) can move status forward (review, interview, etc.)
+      //   – Admins can do anything
+      allow update: if isSignedIn() && (
+                (isOwner(resource.data.candidateId) && request.resource.data.status == 'withdrawn') ||
+                (isEmployer() && request.auth.uid == resource.data.employerId) ||
+                isAdmin());
+
+      // Only admins may delete an application (e.g. GDPR “right to be forgotten”)
+      allow delete: if isAdmin();
+    }
+
+    // ----------------------------------------------------------
+    // TRANSACTIONS (payments / escrow)
+    // ----------------------------------------------------------
+    match /transactions/{transactionId} {
+      // Only the employer involved or an admin may read
+      allow read: if isSignedIn() && (
+                isOwner(resource.data.employerId) ||
+                isAdmin());
+
+      // Writes must come from server‑side code (Admin SDK) – deny any client call
+      allow write: if false;
+    }
+
+    // ----------------------------------------------------------
+    // DEFAULT – deny everything else
+    // ----------------------------------------------------------
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+}
+}

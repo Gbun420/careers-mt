@@ -1,0 +1,616 @@
+/* public/script.js – Production Refactor Phase 1 */
+"use strict";
+
+import { matchesJobFilter } from "./job-filter.mjs";
+import { resolveLoginRole } from "./role-policy.mjs";
+
+const firebaseConfig = window.firebaseConfig || {};
+if (!firebase.apps.length && firebaseConfig.apiKey) {
+  firebase.initializeApp(firebaseConfig);
+}
+
+const hasFirebase = firebase.apps.length > 0;
+const auth = hasFirebase ? firebase.auth() : null;
+const db = hasFirebase ? firebase.firestore() : null;
+
+if (!hasFirebase) {
+  console.error("Firebase config missing. Run npm run build with NEXT_PUBLIC_FIREBASE_CONFIG.");
+}
+
+let currentUser = null;
+let userRole = null;
+let currentApplyJobId = null;
+let currentApplyJobTitle = null;
+let currentApplyEmployerId = null;
+let currentApplyCompanyName = null;
+let pendingApplyJobId = null;
+
+async function ensureUserProfile(role) {
+  if (!db || !currentUser) return;
+  if (role !== "CANDIDATE") return;
+  const userRef = db.collection("users").doc(currentUser.uid);
+  await userRef.set(
+    {
+      role,
+      updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+    },
+    { merge: true }
+  );
+}
+
+async function loadUserRoleFromProfile(uid) {
+  if (!db) return null;
+  const snap = await db.collection("users").doc(uid).get();
+  if (!snap.exists) return null;
+  const data = snap.data() || {};
+  return data.role || null;
+}
+
+// ---------------------------------------------------------
+// UI Navigation & Mode Isolation
+// ---------------------------------------------------------
+window.switchView = function(view) {
+  if (["employer-dashboard", "employer-jobs", "post-job"].includes(view) && userRole !== "EMPLOYER") {
+    showToast("Employer login required.");
+    showAuthModal();
+    return;
+  }
+  if (view === "candidate-applications" && userRole !== "CANDIDATE") {
+    showToast("Candidate login required.");
+    showAuthModal();
+    return;
+  }
+
+  const sections = document.querySelectorAll(".page-view");
+  sections.forEach(el => el.classList.replace("active-view", "hidden-view"));
+  
+  const target = document.getElementById(view);
+  if (target) {
+    target.classList.replace("hidden-view", "active-view");
+  }
+
+  window.location.hash = `#${view}`;
+
+  if (view === "jobs") loadJobs();
+  if (view === "candidate-applications") loadApplications();
+  if (view === "employer-dashboard") loadEmployerDashboard();
+  if (view === "employer-jobs") loadEmployerJobs();
+};
+
+function updateAuthUI(user, role) {
+  const userInfo = document.getElementById("user-info");
+  const btnLogout = document.getElementById("btn-logout");
+  const btnLogin = document.getElementById("btn-login");
+  const publicLinks = document.querySelector(".public-flow");
+  const candidateLinks = document.querySelector(".candidate-flow");
+  const employerLinks = document.querySelector(".employer-flow");
+
+  if (user) {
+    const displayRole = role || "USER";
+    userInfo.innerText = `${displayRole}: ${user.uid.slice(0, 5)}...`;
+    userInfo.classList.remove("hidden");
+    btnLogout.classList.remove("hidden");
+    btnLogin.classList.add("hidden");
+    if (role) publicLinks.classList.add("hidden");
+    else publicLinks.classList.remove("hidden");
+    
+    if (role === "CANDIDATE") {
+      candidateLinks.classList.remove("hidden");
+      employerLinks.classList.add("hidden");
+    } else if (role === "EMPLOYER") {
+      employerLinks.classList.remove("hidden");
+      candidateLinks.classList.add("hidden");
+    } else {
+      candidateLinks.classList.add("hidden");
+      employerLinks.classList.add("hidden");
+    }
+  } else {
+    userInfo.innerText = "";
+    userInfo.classList.add("hidden");
+    btnLogout.classList.add("hidden");
+    btnLogin.classList.remove("hidden");
+    publicLinks.classList.remove("hidden");
+    candidateLinks.classList.add("hidden");
+    employerLinks.classList.add("hidden");
+  }
+}
+
+// ---------------------------------------------------------
+// Auth Logic
+// ---------------------------------------------------------
+window.showAuthModal = function() {
+    document.getElementById("auth-modal").classList.remove("hidden");
+};
+
+window.login = async function(role) {
+  if (!auth || !db) {
+    showToast("Firebase is not configured. Check your build config.");
+    return;
+  }
+  try {
+    document.getElementById("auth-modal").classList.add("hidden");
+    showToast(`Initializing ${role} session...`);
+    const cred = await auth.signInAnonymously();
+    currentUser = cred.user;
+
+    const existingRole = await loadUserRoleFromProfile(currentUser.uid);
+    const loginDecision = resolveLoginRole({
+      existingRole,
+      requestedRole: role
+    });
+
+    if (!loginDecision.allowed || !loginDecision.role) {
+      await auth.signOut();
+      currentUser = null;
+      userRole = null;
+      updateAuthUI(null, null);
+      showToast(loginDecision.message || "Access denied.");
+      return;
+    }
+
+    userRole = loginDecision.role;
+
+    if (!existingRole && userRole === "CANDIDATE") {
+      await ensureUserProfile(userRole);
+    }
+
+    updateAuthUI(currentUser, userRole);
+    showToast("✅ Logged in successfully");
+    
+    if (role === "EMPLOYER") window.switchView("employer-dashboard");
+    else window.switchView("jobs");
+
+    if (role === "CANDIDATE" && pendingApplyJobId) {
+      const targetJob = pendingApplyJobId;
+      pendingApplyJobId = null;
+      openApplyModal(targetJob);
+    }
+  } catch (err) {
+    showToast(`❌ Connection Error: ${err.message}`);
+  }
+};
+
+window.logout = async function() {
+  if (!auth) return;
+  await auth.signOut();
+  currentUser = null;
+  userRole = null;
+  updateAuthUI(null, null);
+  showToast("👋 Logged out");
+  window.switchView("home");
+};
+
+if (auth) {
+  auth.onAuthStateChanged(async (user) => {
+    currentUser = user;
+    if (!user) {
+      userRole = null;
+      updateAuthUI(null, null);
+      return;
+    }
+
+    try {
+      const profileRole = await loadUserRoleFromProfile(user.uid);
+      if (profileRole) {
+        userRole = profileRole;
+        updateAuthUI(user, userRole);
+        return;
+      }
+    } catch (e) {
+      // ignore read errors, allow login flow to set role
+    }
+
+    userRole = null;
+    updateAuthUI(user, null);
+  });
+}
+
+// ---------------------------------------------------------
+// Job Logic (Candidate)
+// ---------------------------------------------------------
+async function loadJobs() {
+  const container = document.getElementById("jobs-container");
+  container.innerHTML = "<p class='mt-text'>Loading jobs...</p>";
+
+  if (!db) {
+    container.innerHTML = "<p class='mt-text'>Firebase not configured.</p>";
+    return;
+  }
+
+  try {
+    const snap = await db.collection("jobs").where("status", "==", "active").get();
+    container.innerHTML = snap.empty ? "<p class='mt-text'>No jobs found.</p>" : "";
+    
+    snap.forEach(doc => {
+      const job = doc.data();
+      const salaryMin = typeof job.salaryMin === "number" ? job.salaryMin : 0;
+      const salaryMax = typeof job.salaryMax === "number" ? job.salaryMax : 0;
+      const salaryLabel = salaryMin && salaryMax
+        ? `€${(salaryMin/1000).toFixed(0)}k - €${(salaryMax/1000).toFixed(0)}k`
+        : "Salary not listed";
+      const card = document.createElement("div");
+      card.className = "bento-card mt-2 job-card";
+      card.dataset.title = job.title || "";
+      card.dataset.companyName = job.companyName || job.companyId || "Company";
+      card.dataset.location = job.location || "";
+      card.innerHTML = `
+        <h4 class="job-title">${job.title}</h4>
+        <p class="company-name mt-text">${job.companyName || job.companyId || 'Company'} • ${job.location || 'Malta'} • ${job.type || 'Full-time'}</p>
+        <div class="mt-1">
+          <span class="badge-salary">${salaryLabel}</span>
+        </div>
+        <button class="btn-neuro btn-sm mt-2" onclick="openApplyModal('${doc.id}')">Apply Now</button>
+      `;
+      container.appendChild(card);
+    });
+  } catch (e) {
+    container.innerHTML = "<p class='mt-text'>Failed to load jobs.</p>";
+  }
+}
+
+// Job Search Filtering Logic
+function filterJobs() {
+  const searchTerm = (document.getElementById("job-search")?.value || "").toLowerCase();
+  const locationTerm = (document.getElementById("job-location")?.value || "").toLowerCase();
+  const jobCards = document.querySelectorAll("#jobs-container .job-card");
+
+  jobCards.forEach(card => {
+    const job = {
+      title: card.dataset.title || card.querySelector(".job-title")?.textContent || "",
+      companyName: card.dataset.companyName || card.querySelector(".company-name")?.textContent || "",
+      location: card.dataset.location || "",
+    };
+
+    card.style.display = matchesJobFilter(job, searchTerm, locationTerm) ? "" : "none";
+  });
+}
+
+const searchInput = document.getElementById("job-search");
+if (searchInput) searchInput.addEventListener("keyup", filterJobs);
+
+const locationSelect = document.getElementById("job-location");
+if (locationSelect) locationSelect.addEventListener("change", filterJobs);
+
+async function openApplyModal(jobId) {
+  if (userRole !== "CANDIDATE") {
+      showToast("Please login as Candidate to apply.");
+      pendingApplyJobId = jobId;
+      showAuthModal();
+      return;
+  }
+  if (!db || !currentUser) {
+    showToast("Please login first.");
+    return;
+  }
+  const modal = document.getElementById("apply-modal");
+  modal.querySelector("h3").innerText = "Apply: Loading...";
+  modal.classList.remove("hidden");
+  document.getElementById("resume-text").value = "";
+
+  currentApplyJobId = jobId;
+  currentApplyJobTitle = null;
+  currentApplyEmployerId = null;
+  currentApplyCompanyName = null;
+
+  try {
+    const jobSnap = await db.collection("jobs").doc(jobId).get();
+    if (!jobSnap.exists) {
+      showToast("Job not found.");
+      modal.classList.add("hidden");
+      return;
+    }
+    const job = jobSnap.data() || {};
+    currentApplyJobTitle = job.title || "Job Position";
+    currentApplyEmployerId = job.employerId || null;
+    currentApplyCompanyName = job.companyName || "";
+    modal.querySelector("h3").innerText = `Apply: ${currentApplyJobTitle}`;
+  } catch (err) {
+    showToast("Failed to load job details.");
+    modal.classList.add("hidden");
+    return;
+  }
+  
+  document.getElementById("submit-application").onclick = async () => {
+    const resume = document.getElementById("resume-text").value.trim();
+    if (!resume || resume.length < 50) return showToast("Please provide at least 50 characters.");
+    if (!currentApplyJobId || !currentApplyEmployerId) return showToast("Job data missing.");
+
+    const btn = document.getElementById("submit-application");
+    btn.disabled = true;
+    btn.innerText = "Submitting...";
+
+    try {
+      const existing = await db
+        .collection("applications")
+        .where("jobId", "==", currentApplyJobId)
+        .where("candidateId", "==", currentUser.uid)
+        .get();
+      if (!existing.empty) {
+        showToast("You already applied to this job.");
+        return;
+      }
+
+      const appData = {
+        jobId: currentApplyJobId,
+        jobTitle: currentApplyJobTitle || "",
+        employerId: currentApplyEmployerId,
+        companyName: currentApplyCompanyName || "",
+        candidateId: currentUser.uid,
+        resumeText: resume,
+        status: "applied",
+        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
+      };
+
+      await db.collection("applications").add(appData);
+      showToast("✅ Application Submitted");
+      modal.classList.add("hidden");
+      window.switchView("candidate-applications");
+    } finally {
+      btn.disabled = false;
+      btn.innerText = "Submit Application";
+    }
+  };
+}
+
+async function loadApplications() {
+    const container = document.getElementById("applications-list");
+    container.innerHTML = "<p class='mt-text'>Loading applications...</p>";
+
+    if (!db || !currentUser) {
+      container.innerHTML = "<p class='mt-text'>Please log in to view applications.</p>";
+      return;
+    }
+    if (userRole !== "CANDIDATE") {
+      container.innerHTML = "<p class='mt-text'>Candidate access only.</p>";
+      return;
+    }
+
+    try {
+      const snap = await db
+        .collection("applications")
+        .where("candidateId", "==", currentUser.uid)
+        .get();
+
+      if (snap.empty) {
+        container.innerHTML = "<p class='mt-text'>You have not applied to any jobs yet.</p>";
+        return;
+      }
+
+      container.innerHTML = "";
+      snap.forEach(doc => {
+        const app = doc.data();
+        const card = document.createElement("div");
+        card.className = "bento-card mt-2";
+        card.innerHTML = `
+          <h4>${app.jobTitle || "Job Application"}</h4>
+          <p class="mt-text">${app.companyName || "Company"} • Status: ${app.status || "applied"}</p>
+        `;
+        container.appendChild(card);
+      });
+    } catch (e) {
+      container.innerHTML = "<p class='mt-text'>Failed to load applications.</p>";
+    }
+}
+
+// ---------------------------------------------------------
+// Employer Logic
+// ---------------------------------------------------------
+async function loadEmployerDashboard() {
+  if (!db || !currentUser) return;
+  if (userRole !== "EMPLOYER") return;
+
+  try {
+    const jobsSnap = await db
+      .collection("jobs")
+      .where("employerId", "==", currentUser.uid)
+      .get();
+
+    const appsSnap = await db
+      .collection("applications")
+      .where("employerId", "==", currentUser.uid)
+      .get();
+
+    const activeJobsEl = document.getElementById("stat-active-jobs");
+    const applicantsEl = document.getElementById("stat-applicants");
+    const spendEl = document.getElementById("stat-spend");
+
+    if (activeJobsEl) activeJobsEl.innerText = String(jobsSnap.size);
+    if (applicantsEl) applicantsEl.innerText = String(appsSnap.size);
+    if (spendEl) spendEl.innerText = "€0.00";
+  } catch (e) {
+    // silent fail to keep dashboard usable
+  }
+}
+
+async function loadEmployerJobs() {
+  const container = document.getElementById("employer-jobs-list");
+  if (!container) return;
+  container.innerHTML = "<p class='mt-text'>Loading your jobs...</p>";
+
+  if (!db || !currentUser) {
+    container.innerHTML = "<p class='mt-text'>Please log in to view jobs.</p>";
+    return;
+  }
+  if (userRole !== "EMPLOYER") {
+    container.innerHTML = "<p class='mt-text'>Employer access only.</p>";
+    return;
+  }
+
+  try {
+    const snap = await db
+      .collection("jobs")
+      .where("employerId", "==", currentUser.uid)
+      .get();
+
+    if (snap.empty) {
+      container.innerHTML = "<p class='mt-text'>No jobs posted yet.</p>";
+      return;
+    }
+
+    container.innerHTML = "";
+    snap.forEach(doc => {
+      const job = doc.data();
+      const card = document.createElement("div");
+      card.className = "bento-card mt-2";
+      card.innerHTML = `
+        <h4>${job.title || "Job Position"}</h4>
+        <p class="mt-text">${job.location || "Malta"} • ${job.type || "Full-time"} • ${job.status || "active"}</p>
+      `;
+      container.appendChild(card);
+    });
+  } catch (e) {
+    container.innerHTML = "<p class='mt-text'>Failed to load jobs.</p>";
+  }
+}
+
+window.toggleBudget = function(show) {
+    const budgetSection = document.getElementById("budget-section");
+    if(show) budgetSection.classList.remove("hidden");
+    else budgetSection.classList.add("hidden");
+}
+
+// Form Validation & Submission Logic
+document.addEventListener("DOMContentLoaded", () => {
+  if (!hasFirebase) {
+    showToast("Firebase config missing. Run npm run build with NEXT_PUBLIC_FIREBASE_CONFIG.");
+  }
+
+  const postForm = document.getElementById("post-job-form");
+  if (postForm) {
+    postForm.onsubmit = async (e) => {
+      e.preventDefault();
+      
+      // Strict Validation
+      const errorDiv = document.getElementById("form-errors");
+      errorDiv.innerText = "";
+
+      if (!db || !currentUser) { errorDiv.innerText = "Please log in first."; return; }
+      if (userRole !== "EMPLOYER") { errorDiv.innerText = "Employer login required."; return; }
+
+      const title = document.getElementById("post-title").value.trim();
+      const companyName = document.getElementById("post-company").value.trim();
+      const location = document.getElementById("post-location").value.trim();
+      const minSal = parseInt(document.getElementById("post-salary-min").value);
+      const maxSal = parseInt(document.getElementById("post-salary-max").value);
+      const desc = document.getElementById("post-desc").value.trim();
+      
+      if(!title) { errorDiv.innerText = "Job title is required."; return; }
+      if(!companyName) { errorDiv.innerText = "Company name is required."; return; }
+      if(!location) { errorDiv.innerText = "Location is required."; return; }
+      if(isNaN(minSal) || isNaN(maxSal) || minSal >= maxSal) { errorDiv.innerText = "Enter a valid salary range."; return; }
+      if(desc.length < 50) { errorDiv.innerText = "Description must be at least 50 characters."; return; }
+      
+      const pricingOptions = document.getElementsByName("pricing");
+      let selectedPricing = "free";
+      for(let opt of pricingOptions) {
+          if(opt.checked) selectedPricing = opt.value;
+      }
+      
+      let budgetCap = null;
+      if(selectedPricing === "ppqa" || selectedPricing === "executive") {
+        const budget = parseInt(document.getElementById("post-budget").value);
+        if(isNaN(budget) || budget < 12) {
+          errorDiv.innerText = "Budget cap required for paid plans (Min €12)."; return;
+        }
+        budgetCap = budget;
+      }
+
+      const btn = document.getElementById("btn-publish");
+      btn.disabled = true;
+      btn.innerText = "Publishing...";
+
+      try {
+        const koQuestion = document.getElementById("ko-1").value.trim();
+        const koRequired = document.getElementById("ko-1-required").checked;
+        const koReject = document.getElementById("ko-1-reject").checked;
+
+        const jobData = {
+          title,
+          companyName,
+          employerId: currentUser.uid,
+          location,
+          type: document.getElementById("post-type").value,
+          salaryMin: minSal,
+          salaryMax: maxSal,
+          description: desc,
+          pricing: selectedPricing,
+          budgetCap,
+          knockoutQuestions: koQuestion ? [{
+            question: koQuestion,
+            required: koRequired,
+            rejectIfNo: koReject
+          }] : [],
+          status: "active",
+          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
+          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+        };
+
+        await db.collection("jobs").add(jobData);
+        showToast("✅ Job published successfully");
+        postForm.reset();
+        window.switchView("employer-dashboard");
+      } catch (err) {
+        showToast(`❌ Error: ${err.message}`);
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Publish Job";
+      }
+    };
+  }
+
+  const btnDraft = document.getElementById("btn-ai-jd");
+  if (btnDraft) {
+    btnDraft.addEventListener("click", () => {
+      const title = document.getElementById("post-title").value.trim();
+      const companyName = document.getElementById("post-company").value.trim();
+      const location = document.getElementById("post-location").value.trim();
+      const type = document.getElementById("post-type").value;
+      const textarea = document.getElementById("post-desc");
+
+      if (!title) {
+        showToast("Add a job title first.");
+        return;
+      }
+
+      const draft = [
+        `${companyName || "We"} are hiring a ${title} in ${location || "Malta"} (${type || "Full-time"}).`,
+        "",
+        "What you'll do:",
+        "- Own your work from idea to delivery",
+        "- Collaborate with a small, fast-moving team",
+        "- Build features that improve the hiring experience",
+        "",
+        "What we're looking for:",
+        "- Proven experience in a similar role",
+        "- Clear communication and ownership",
+        "- Comfort working in a lean environment",
+        "",
+        "Why join:",
+        "- Impactful work with real users",
+        "- Transparent, supportive team culture",
+      ].join("\n");
+
+      textarea.value = draft;
+      showToast("Sample draft inserted.");
+    });
+  }
+
+  // Initial View
+  const initialView = window.location.hash ? window.location.hash.replace("#", "") : "home";
+  window.switchView(initialView || "home");
+});
+
+// ---------------------------------------------------------
+// Utilities
+// ---------------------------------------------------------
+function showToast(msg) {
+  const toast = document.getElementById("toast");
+  toast.innerText = msg;
+  toast.classList.remove("hidden");
+  toast.style.animation = 'none';
+  toast.offsetHeight; /* trigger reflow */
+  toast.style.animation = null;
+  setTimeout(() => toast.classList.add("hidden"), 3000);
+}
