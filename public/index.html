@@ -7,7 +7,7 @@
     
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Manrope:wght@200..800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
     
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-app-compat.js"></script>
     <script src="https://www.gstatic.com/firebasejs/10.7.1/firebase-auth-compat.js"></script>
@@ -47,7 +47,7 @@
 
         <div class="nav-controls">
             <button id="btn-login" class="btn-neuro btn-sm" onclick="showAuthModal()">Login / Register</button>
-            <span id="user-info" class="mt-text hidden"></span>
+            <span id="user-info" class="hidden"></span>
             <button id="btn-logout" class="btn-neuro btn-sm btn-outline hidden" onclick="logout()">Logout</button>
         </div>
     </nav>
@@ -65,7 +65,7 @@
             </div>
             
             <div class="social-proof mt-2">
-                <p class="mt-text">Trusted by the community: <strong>500+</strong> candidates placed | <strong>50+</strong> Maltese companies hiring</p>
+                <p class="">Trusted by the community: <strong>500+</strong> candidates placed | <strong>50+</strong> Maltese companies hiring</p>
             </div>
             
             <div class="how-it-works mt-2">
@@ -130,9 +130,9 @@
         <section class="bento-card hero-bento hidden-view page-view" id="employer-dashboard">
             <h3>Employer Dashboard</h3>
             <div class="dashboard-metrics">
-                <div class="bento-card"><h4>Active Jobs</h4><p class="mt-text stat-value" id="stat-active-jobs">0</p></div>
-                <div class="bento-card"><h4>Applicants</h4><p class="mt-text stat-value" id="stat-applicants">0</p></div>
-                <div class="bento-card"><h4>Spend</h4><p class="mt-text stat-value" id="stat-spend">€0.00</p></div>
+                <div class="metric-card"><h4>Active Jobs</h4><p class="stat-value" id="stat-active-jobs">0</p></div>
+                <div class="metric-card"><h4>Applicants</h4><p class="stat-value" id="stat-applicants">0</p></div>
+                <div class="metric-card"><h4>Spend</h4><p class="stat-value" id="stat-spend">€0.00</p></div>
             </div>
             <div class="mt-2">
                 <button class="btn-neuro" onclick="switchView('post-job')">Create New Job</button>
@@ -209,17 +209,17 @@
                     <label class="bento-card pricing-option">
                         <input type="radio" name="pricing" value="free" checked onchange="toggleBudget(false)">
                         <strong>Free (€0)</strong><br>
-                        <span class="mt-text">Limited visibility</span>
+                        <span class="">Limited visibility</span>
                     </label>
                     <label class="bento-card pricing-option pricing-option--highlight">
                         <input type="radio" name="pricing" value="ppqa" onchange="toggleBudget(true)">
                         <strong>PPQA (€12)</strong><br>
-                        <span class="mt-text">Per qualified applicant</span>
+                        <span class="">Per qualified applicant</span>
                     </label>
                     <label class="bento-card pricing-option">
                         <input type="radio" name="pricing" value="executive" onchange="toggleBudget(false)">
                         <strong>Executive (€250)</strong><br>
-                        <span class="mt-text">Per interview</span>
+                        <span class="">Per interview</span>
                     </label>
                 </div>
 
@@ -240,7 +240,7 @@
         <!-- Admin Dashboard -->
         <section class="bento-card hero-bento hidden-view page-view" id="admin-dashboard">
             <h3>Admin Dashboard</h3>
-            <p class="mt-text">Assign roles to users. Changing a user's role updates their custom claims and permissions.</p>
+            <p class="">Assign roles to users. Changing a user's role updates their custom claims and permissions.</p>
 
             <form id="set-role-form" class="mt-2">
                 <h4 class="section-title-primary">Role Assignment</h4>
@@ -267,7 +267,7 @@
     <div id="auth-modal" class="modal-overlay hidden">
         <div class="bento-card modal-content-card modal-content-auth">
             <h3>Login / Register</h3>
-            <p class="mt-text mt-1 mb-2">Candidates can sign up instantly. Employer access requires an approved account.</p>
+            <p class="mt-1 mb-2">Candidates can sign up instantly. Employer access requires an approved account.</p>
             <div class="form-group mt-2">
                 <button class="btn-neuro w-full" onclick="login('CANDIDATE')">I am a Candidate</button>
                 <button class="btn-neuro btn-secondary w-full mt-2" onclick="login('EMPLOYER')">I am an Employer</button>

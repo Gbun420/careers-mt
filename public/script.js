@@ -225,16 +225,16 @@ if (auth) {
 // ---------------------------------------------------------
 async function loadJobs() {
   const container = document.getElementById("jobs-container");
-  container.innerHTML = "<p class='mt-text'>Loading jobs...</p>";
+  container.innerHTML = "<p >Loading jobs...</p>";
 
   if (!db) {
-    container.innerHTML = "<p class='mt-text'>Firebase not configured.</p>";
+    container.innerHTML = "<p >Firebase not configured.</p>";
     return;
   }
 
   try {
     const snap = await db.collection("jobs").where("status", "==", "active").get();
-    container.innerHTML = snap.empty ? "<p class='mt-text'>No jobs found.</p>" : "";
+    container.innerHTML = snap.empty ? "<p >No jobs found.</p>" : "";
     
     snap.forEach(doc => {
       const job = doc.data();
@@ -250,7 +250,7 @@ async function loadJobs() {
       card.dataset.location = job.location || "";
       card.innerHTML = `
         <h4 class="job-title">${job.title}</h4>
-        <p class="company-name mt-text">${job.companyName || job.companyId || 'Company'} • ${job.location || 'Malta'} • ${job.type || 'Full-time'}</p>
+        <p class="company-name">${job.companyName || job.companyId || 'Company'} • ${job.location || 'Malta'} • ${job.type || 'Full-time'}</p>
         <div class="mt-1">
           <span class="badge-salary">${salaryLabel}</span>
         </div>
@@ -259,7 +259,7 @@ async function loadJobs() {
       container.appendChild(card);
     });
   } catch (e) {
-    container.innerHTML = "<p class='mt-text'>Failed to load jobs.</p>";
+    container.innerHTML = "<p >Failed to load jobs.</p>";
   }
 }
 
@@ -377,14 +377,14 @@ async function openApplyModal(jobId) {
 
 async function loadApplications() {
     const container = document.getElementById("applications-list");
-    container.innerHTML = "<p class='mt-text'>Loading applications...</p>";
+    container.innerHTML = "<p >Loading applications...</p>";
 
     if (!currentUser) {
-      container.innerHTML = "<p class='mt-text'>Please log in to view applications.</p>";
+      container.innerHTML = "<p >Please log in to view applications.</p>";
       return;
     }
     if (userRole !== "CANDIDATE") {
-      container.innerHTML = "<p class='mt-text'>Candidate access only.</p>";
+      container.innerHTML = "<p >Candidate access only.</p>";
       return;
     }
 
@@ -410,7 +410,7 @@ async function loadApplications() {
       const apps = await response.json();
 
       if (!apps || apps.length === 0) {
-        container.innerHTML = "<p class='mt-text'>You have not applied to any jobs yet.</p>";
+        container.innerHTML = "<p >You have not applied to any jobs yet.</p>";
         return;
       }
 
@@ -419,16 +419,16 @@ async function loadApplications() {
         const card = document.createElement("div");
         card.className = "bento-card mt-2";
         const fitScoreDisplay = app.fitScore !== undefined ? ` • Fit: ${app.fitScore}%` : "";
-        const aiReasonDisplay = app.aiReason ? `<p class="mt-text text-muted" style="font-size:0.85em">AI: ${app.aiReason}</p>` : "";
+        const aiReasonDisplay = app.aiReason ? `<p class="text-muted" style="font-size:0.85em">AI: ${app.aiReason}</p>` : "";
         card.innerHTML = `
           <h4>${app.jobTitle || "Job Application"}</h4>
-          <p class="mt-text">${app.companyName || "Company"} • Status: ${app.status || "applied"}${fitScoreDisplay}</p>
+          <p >${app.companyName || "Company"} • Status: ${app.status || "applied"}${fitScoreDisplay}</p>
           ${aiReasonDisplay}
         `;
         container.appendChild(card);
       });
     } catch (e) {
-      container.innerHTML = "<p class='mt-text'>Failed to load applications.</p>";
+      container.innerHTML = "<p >Failed to load applications.</p>";
     }
 }
 
@@ -465,14 +465,14 @@ async function loadEmployerDashboard() {
 async function loadEmployerJobs() {
   const container = document.getElementById("employer-jobs-list");
   if (!container) return;
-  container.innerHTML = "<p class='mt-text'>Loading your jobs...</p>";
+  container.innerHTML = "<p >Loading your jobs...</p>";
 
   if (!db || !currentUser) {
-    container.innerHTML = "<p class='mt-text'>Please log in to view jobs.</p>";
+    container.innerHTML = "<p >Please log in to view jobs.</p>";
     return;
   }
   if (userRole !== "EMPLOYER") {
-    container.innerHTML = "<p class='mt-text'>Employer access only.</p>";
+    container.innerHTML = "<p >Employer access only.</p>";
     return;
   }
 
@@ -483,7 +483,7 @@ async function loadEmployerJobs() {
       .get();
 
     if (snap.empty) {
-      container.innerHTML = "<p class='mt-text'>No jobs posted yet.</p>";
+      container.innerHTML = "<p >No jobs posted yet.</p>";
       return;
     }
 
@@ -494,12 +494,12 @@ async function loadEmployerJobs() {
       card.className = "bento-card mt-2";
       card.innerHTML = `
         <h4>${job.title || "Job Position"}</h4>
-        <p class="mt-text">${job.location || "Malta"} • ${job.type || "Full-time"} • ${job.status || "active"}</p>
+        <p >${job.location || "Malta"} • ${job.type || "Full-time"} • ${job.status || "active"}</p>
       `;
       container.appendChild(card);
     });
   } catch (e) {
-    container.innerHTML = "<p class='mt-text'>Failed to load jobs.</p>";
+    container.innerHTML = "<p >Failed to load jobs.</p>";
   }
 }
 
