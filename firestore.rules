@@ -51,13 +51,8 @@ service cloud.firestore {
       // Anyone can read an active job; admins can read anything
       allow read: if resource.data.status == 'active' || isAdmin();
 
-      // Only EMPLOYER or ADMIN can create a job – salary fields are required
-      allow create: if (isEmployer() || isAdmin()) &&
-                     request.resource.data.employerId == request.auth.uid &&
-                     request.resource.data.salaryMin != null &&
-                     request.resource.data.salaryMax != null &&
-                     request.resource.data.salaryMin > 0 &&
-                     request.resource.data.salaryMax >= request.resource.data.salaryMin;
+      // Only the Admin SDK via the API can create jobs (bypasses security rules)
+      allow create: if false;
 
       // Updates are allowed for the owning employer or admin; only a white‑list of fields may change
       allow update: if (isAdmin() || (isEmployer() && request.auth.uid == resource.data.employerId)) &&
@@ -80,11 +75,8 @@ service cloud.firestore {
                 isAdmin() ||
                 (isEmployer() && request.auth.uid == resource.data.employerId));
 
-      // Only candidates can create a new application; they must be the candidate themselves
-      allow create: if isCandidate() &&
-                     request.resource.data.candidateId == request.auth.uid &&
-                     request.resource.data.employerId != null &&
-                     request.resource.data.status == 'applied';
+      // Applications must go through the /api/apply endpoint (Admin SDK bypasses rules)
+      allow create: if false;
 
       // Updates are allowed:
       //   – Candidate can withdraw his own application
@@ -95,7 +87,7 @@ service cloud.firestore {
                 (isEmployer() && request.auth.uid == resource.data.employerId) ||
                 isAdmin());
 
-      // Only admins may delete an application (e.g. GDPR “right to be forgotten”)
+      // Only admins may delete an application (e.g. GDPR "right to be forgotten")
       allow delete: if isAdmin();
     }
 

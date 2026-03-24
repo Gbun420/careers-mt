@@ -40,6 +40,11 @@
             <a href="#post-job" onclick="switchView('post-job')">Post Job</a>
         </div>
 
+        <!-- Admin-Only Links -->
+        <div class="nav-links-group admin-flow hidden">
+            <a id="nav-admin" href="#admin-dashboard" onclick="switchView('admin-dashboard')">Admin Dashboard</a>
+        </div>
+
         <div class="nav-controls">
             <button id="btn-login" class="btn-neuro btn-sm" onclick="showAuthModal()">Login / Register</button>
             <span id="user-info" class="mt-text hidden"></span>
@@ -229,6 +234,30 @@
 
                 <div class="mt-2 form-errors" id="form-errors"></div>
                 <button type="submit" id="btn-publish" class="btn-neuro mt-2 w-full btn-large">Publish Job</button>
+            </form>
+        </section>
+
+        <!-- Admin Dashboard -->
+        <section class="bento-card hero-bento hidden-view page-view" id="admin-dashboard">
+            <h3>Admin Dashboard</h3>
+            <p class="mt-text">Assign roles to users. Changing a user's role updates their custom claims and permissions.</p>
+
+            <form id="set-role-form" class="mt-2">
+                <h4 class="section-title-primary">Role Assignment</h4>
+                <div class="form-group mt-2">
+                    <label for="role-uid">User UID or Email</label>
+                    <input type="text" id="role-uid" required placeholder="Enter user UID or email address">
+                </div>
+                <div class="form-group mt-2">
+                    <label for="role-select">Assign Role</label>
+                    <select id="role-select" required>
+                        <option value="CANDIDATE">CANDIDATE</option>
+                        <option value="EMPLOYER">EMPLOYER</option>
+                        <option value="ADMIN">ADMIN</option>
+                    </select>
+                </div>
+                <div id="set-role-error" class="form-errors mt-1"></div>
+                <button type="submit" class="btn-neuro mt-2 w-full">Update Role</button>
             </form>
         </section>
 

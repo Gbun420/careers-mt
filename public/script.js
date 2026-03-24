@@ -61,6 +61,11 @@ window.switchView = function(view) {
     showAuthModal();
     return;
   }
+  if (view === "admin-dashboard" && userRole !== "ADMIN") {
+    showToast("Admin access required.");
+    showAuthModal();
+    return;
+  }
 
   const sections = document.querySelectorAll(".page-view");
   sections.forEach(el => el.classList.replace("active-view", "hidden-view"));
@@ -85,6 +90,7 @@ function updateAuthUI(user, role) {
   const publicLinks = document.querySelector(".public-flow");
   const candidateLinks = document.querySelector(".candidate-flow");
   const employerLinks = document.querySelector(".employer-flow");
+  const adminLinks = document.querySelector(".admin-flow");
 
   if (user) {
     const displayRole = role || "USER";
@@ -94,16 +100,23 @@ function updateAuthUI(user, role) {
     btnLogin.classList.add("hidden");
     if (role) publicLinks.classList.add("hidden");
     else publicLinks.classList.remove("hidden");
-    
+
     if (role === "CANDIDATE") {
       candidateLinks.classList.remove("hidden");
       employerLinks.classList.add("hidden");
+      adminLinks.classList.add("hidden");
     } else if (role === "EMPLOYER") {
       employerLinks.classList.remove("hidden");
       candidateLinks.classList.add("hidden");
+      adminLinks.classList.add("hidden");
+    } else if (role === "ADMIN") {
+      adminLinks.classList.remove("hidden");
+      candidateLinks.classList.add("hidden");
+      employerLinks.classList.add("hidden");
     } else {
       candidateLinks.classList.add("hidden");
       employerLinks.classList.add("hidden");
+      adminLinks.classList.add("hidden");
     }
   } else {
     userInfo.innerText = "";
@@ -113,6 +126,7 @@ function updateAuthUI(user, role) {
     publicLinks.classList.remove("hidden");
     candidateLinks.classList.add("hidden");
     employerLinks.classList.add("hidden");
+    adminLinks.classList.add("hidden");
   }
 }
 
@@ -314,39 +328,46 @@ async function openApplyModal(jobId) {
   document.getElementById("submit-application").onclick = async () => {
     const resume = document.getElementById("resume-text").value.trim();
     if (!resume || resume.length < 50) return showToast("Please provide at least 50 characters.");
-    if (!currentApplyJobId || !currentApplyEmployerId) return showToast("Job data missing.");
+    if (!currentApplyJobId) return showToast("Job data missing.");
 
     const btn = document.getElementById("submit-application");
     btn.disabled = true;
     btn.innerText = "Submitting...";
 
     try {
-      const existing = await db
-        .collection("applications")
-        .where("jobId", "==", currentApplyJobId)
-        .where("candidateId", "==", currentUser.uid)
-        .get();
-      if (!existing.empty) {
-        showToast("You already applied to this job.");
-        return;
+      const idToken = await currentUser.getIdToken();
+      const appCheckToken = await firebase.appCheck().getToken();
+
+      const response = await fetch("/api/apply", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`,
+          "X-Firebase-AppCheck": appCheckToken.token
+        },
+        body: JSON.stringify({
+          jobId: currentApplyJobId,
+          resumeText: resume
+        })
+      });
+
+      const result = await response.json();
+
+      if (!response.ok) {
+        if (result.details?.[0]?.message) {
+          throw new Error(result.details[0].message);
+        }
+        throw new Error(result.error || "Failed to submit application");
       }
 
-      const appData = {
-        jobId: currentApplyJobId,
-        jobTitle: currentApplyJobTitle || "",
-        employerId: currentApplyEmployerId,
-        companyName: currentApplyCompanyName || "",
-        candidateId: currentUser.uid,
-        resumeText: resume,
-        status: "applied",
-        createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-        updatedAt: firebase.firestore.FieldValue.serverTimestamp(),
-      };
-
-      await db.collection("applications").add(appData);
-      showToast("✅ Application Submitted");
+      const fitMessage = result.fitScore !== undefined
+        ? `✅ Application Submitted (AI Fit Score: ${result.fitScore}%)`
+        : "✅ Application Submitted";
+      showToast(fitMessage);
       modal.classList.add("hidden");
       window.switchView("candidate-applications");
+    } catch (err) {
+      showToast(`❌ Error: ${err.message}`);
     } finally {
       btn.disabled = false;
       btn.innerText = "Submit Application";
@@ -358,7 +379,7 @@ async function loadApplications() {
     const container = document.getElementById("applications-list");
     container.innerHTML = "<p class='mt-text'>Loading applications...</p>";
 
-    if (!db || !currentUser) {
+    if (!currentUser) {
       container.innerHTML = "<p class='mt-text'>Please log in to view applications.</p>";
       return;
     }
@@ -368,24 +389,41 @@ async function loadApplications() {
     }
 
     try {
-      const snap = await db
-        .collection("applications")
-        .where("candidateId", "==", currentUser.uid)
-        .get();
+      const idToken = await currentUser.getIdToken();
+      const appCheckToken = await firebase.appCheck().getToken();
 
-      if (snap.empty) {
+      const response = await fetch("/api/applications", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "Authorization": `Bearer ${idToken}`,
+          "X-Firebase-AppCheck": appCheckToken.token
+        },
+        body: JSON.stringify({ candidateId: currentUser.uid })
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.error || "Failed to load applications");
+      }
+
+      const apps = await response.json();
+
+      if (!apps || apps.length === 0) {
         container.innerHTML = "<p class='mt-text'>You have not applied to any jobs yet.</p>";
         return;
       }
 
       container.innerHTML = "";
-      snap.forEach(doc => {
-        const app = doc.data();
+      apps.forEach(app => {
         const card = document.createElement("div");
         card.className = "bento-card mt-2";
+        const fitScoreDisplay = app.fitScore !== undefined ? ` • Fit: ${app.fitScore}%` : "";
+        const aiReasonDisplay = app.aiReason ? `<p class="mt-text text-muted" style="font-size:0.85em">AI: ${app.aiReason}</p>` : "";
         card.innerHTML = `
           <h4>${app.jobTitle || "Job Application"}</h4>
-          <p class="mt-text">${app.companyName || "Company"} • Status: ${app.status || "applied"}</p>
+          <p class="mt-text">${app.companyName || "Company"} • Status: ${app.status || "applied"}${fitScoreDisplay}</p>
+          ${aiReasonDisplay}
         `;
         container.appendChild(card);
       });
@@ -529,7 +567,6 @@ document.addEventListener("DOMContentLoaded", () => {
         const jobData = {
           title,
           companyName,
-          employerId: currentUser.uid,
           location,
           type: document.getElementById("post-type").value,
           salaryMin: minSal,
@@ -541,13 +578,28 @@ document.addEventListener("DOMContentLoaded", () => {
             question: koQuestion,
             required: koRequired,
             rejectIfNo: koReject
-          }] : [],
-          status: "active",
-          createdAt: firebase.firestore.FieldValue.serverTimestamp(),
-          updatedAt: firebase.firestore.FieldValue.serverTimestamp()
+          }] : []
         };
 
-        await db.collection("jobs").add(jobData);
+        const idToken = await currentUser.getIdToken();
+        const appCheckToken = await firebase.appCheck().getToken();
+
+        const response = await fetch("/api/jobs", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${idToken}`,
+            "X-Firebase-AppCheck": appCheckToken.token
+          },
+          body: JSON.stringify(jobData)
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || result.details?.[0]?.message || "Failed to publish job");
+        }
+
         showToast("✅ Job published successfully");
         postForm.reset();
         window.switchView("employer-dashboard");
@@ -595,6 +647,58 @@ document.addEventListener("DOMContentLoaded", () => {
       textarea.value = draft;
       showToast("Sample draft inserted.");
     });
+  }
+
+  // Admin Set Role Form Handler
+  const setRoleForm = document.getElementById("set-role-form");
+  if (setRoleForm) {
+    setRoleForm.onsubmit = async (e) => {
+      e.preventDefault();
+
+      const errorDiv = document.getElementById("set-role-error");
+      errorDiv.innerText = "";
+
+      if (!currentUser) { errorDiv.innerText = "Please log in first."; return; }
+      if (userRole !== "ADMIN") { errorDiv.innerText = "Admin access required."; return; }
+
+      const uidOrEmail = document.getElementById("role-uid").value.trim();
+      const role = document.getElementById("role-select").value;
+
+      if (!uidOrEmail) { errorDiv.innerText = "User UID or email is required."; return; }
+
+      const btn = setRoleForm.querySelector('button[type="submit"]');
+      btn.disabled = true;
+      btn.innerText = "Updating...";
+
+      try {
+        const idToken = await currentUser.getIdToken();
+        const appCheckToken = await firebase.appCheck().getToken();
+
+        const response = await fetch("/api/admin/set-role", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${idToken}`,
+            "X-Firebase-AppCheck": appCheckToken.token
+          },
+          body: JSON.stringify({ uid: uidOrEmail, role })
+        });
+
+        const result = await response.json();
+
+        if (!response.ok) {
+          throw new Error(result.error || "Failed to update role");
+        }
+
+        showToast(`✅ Role updated to ${role} for ${uidOrEmail}`);
+        setRoleForm.reset();
+      } catch (err) {
+        errorDiv.innerText = err.message;
+      } finally {
+        btn.disabled = false;
+        btn.innerText = "Update Role";
+      }
+    };
   }
 
   // Initial View
