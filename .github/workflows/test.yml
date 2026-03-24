@@ -43,7 +43,6 @@ jobs:
     needs: test
     if: github.event_name == 'pull_request'
     runs-on: ubuntu-latest
-    environment: preview
     
     steps:
     - name: Checkout code
@@ -61,7 +60,6 @@ jobs:
     needs: test
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    environment: production
     
     steps:
     - name: Checkout code
