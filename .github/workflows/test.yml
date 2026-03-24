@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://json.schemastore.org/github-workflow.json
 name: CI Pipeline
 
 on:
@@ -9,6 +10,10 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    # Defining env at the job level with quotes to satisfy strict IDE schema validators
+    env:
+      NEXT_PUBLIC_FIREBASE_CONFIG: "${{ secrets.NEXT_PUBLIC_FIREBASE_CONFIG }}"
+      STRIPE_SECRET_KEY: "${{ secrets.STRIPE_SECRET_KEY }}"
     
     steps:
     - name: Checkout code
@@ -30,13 +35,7 @@ jobs:
       run: npm run lint || echo "Linting has warnings"
       
     - name: Run tests
-      env:
-        NEXT_PUBLIC_FIREBASE_CONFIG: "${{ secrets.NEXT_PUBLIC_FIREBASE_CONFIG }}"
-        STRIPE_SECRET_KEY: "${{ secrets.STRIPE_SECRET_KEY }}"
       run: npm test
         
     - name: Run integration tests
-      env:
-        NEXT_PUBLIC_FIREBASE_CONFIG: "${{ secrets.NEXT_PUBLIC_FIREBASE_CONFIG }}"
-        STRIPE_SECRET_KEY: "${{ secrets.STRIPE_SECRET_KEY }}"
       run: npm run test:integration
