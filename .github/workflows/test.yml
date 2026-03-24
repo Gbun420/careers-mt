@@ -10,8 +10,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     env:
-      NEXT_PUBLIC_FIREBASE_CONFIG: "${{ secrets.NEXT_PUBLIC_FIREBASE_CONFIG }}"
-      STRIPE_SECRET_KEY: "${{ secrets.STRIPE_SECRET_KEY }}"
+      NEXT_PUBLIC_FIREBASE_CONFIG: "${{ secrets.NEXT_PUBLIC_FIREBASE_CONFIG || 'ci-dummy' }}"
+      STRIPE_SECRET_KEY: "${{ secrets.STRIPE_SECRET_KEY || 'ci-dummy' }}"
       NODE_ENV: test
     
     steps:
@@ -51,9 +51,9 @@ jobs:
     - name: Deploy to Vercel Preview
       uses: amondnet/vercel-action@v25
       with:
-        vercel-token: "${{ secrets.VERCEL_TOKEN }}"
-        vercel-org-id: "${{ secrets.VERCEL_ORG_ID }}"
-        vercel-project-id: "${{ secrets.VERCEL_PROJECT_ID }}"
+        vercel-token: "${{ secrets.VERCEL_TOKEN || 'ci-dummy' }}"
+        vercel-org-id: "${{ secrets.VERCEL_ORG_ID || 'ci-dummy' }}"
+        vercel-project-id: "${{ secrets.VERCEL_PROJECT_ID || 'ci-dummy' }}"
         vercel-args: '--prod'
         
   deploy-production:
@@ -68,7 +68,7 @@ jobs:
     - name: Deploy to Vercel Production
       uses: amondnet/vercel-action@v25
       with:
-        vercel-token: "${{ secrets.VERCEL_TOKEN }}"
-        vercel-org-id: "${{ secrets.VERCEL_ORG_ID }}"
-        vercel-project-id: "${{ secrets.VERCEL_PROJECT_ID }}"
+        vercel-token: "${{ secrets.VERCEL_TOKEN || 'ci-dummy' }}"
+        vercel-org-id: "${{ secrets.VERCEL_ORG_ID || 'ci-dummy' }}"
+        vercel-project-id: "${{ secrets.VERCEL_PROJECT_ID || 'ci-dummy' }}"
         vercel-args: '--prod'
