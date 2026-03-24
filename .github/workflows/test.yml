@@ -9,10 +9,6 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
-    env:
-      NEXT_PUBLIC_FIREBASE_CONFIG: "${{ secrets.NEXT_PUBLIC_FIREBASE_CONFIG }}"
-      STRIPE_SECRET_KEY: "${{ secrets.STRIPE_SECRET_KEY }}"
-      NODE_ENV: test
     
     steps:
     - name: Checkout code
@@ -34,7 +30,13 @@ jobs:
       run: npm run lint || echo "Linting has warnings"
       
     - name: Run tests
+      env:
+        NEXT_PUBLIC_FIREBASE_CONFIG: "${{ secrets.NEXT_PUBLIC_FIREBASE_CONFIG }}"
+        STRIPE_SECRET_KEY: "${{ secrets.STRIPE_SECRET_KEY }}"
       run: npm test
         
     - name: Run integration tests
+      env:
+        NEXT_PUBLIC_FIREBASE_CONFIG: "${{ secrets.NEXT_PUBLIC_FIREBASE_CONFIG }}"
+        STRIPE_SECRET_KEY: "${{ secrets.STRIPE_SECRET_KEY }}"
       run: npm run test:integration
