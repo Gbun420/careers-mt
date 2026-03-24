@@ -82,6 +82,7 @@ window.switchView = function(view) {
   if (view === "candidate-applications") loadApplications();
   if (view === "employer-dashboard") loadEmployerDashboard();
   if (view === "employer-jobs") loadEmployerJobs();
+  if (view === "admin-dashboard") loadAdminDashboardData();
 };
 
 function updateAuthUI(user, role) {
@@ -790,6 +791,86 @@ document.addEventListener("DOMContentLoaded", () => {
   const initialView = window.location.hash ? window.location.hash.replace("#", "") : "home";
   window.switchView(initialView || "home");
 });
+
+// ---------------------------------------------------------
+// Admin Dashboard Logic
+// ---------------------------------------------------------
+async function loadAdminDashboardData() {
+  if (!currentUser || userRole !== 'ADMIN') return;
+
+  try {
+    const idToken = await currentUser.getIdToken();
+    const appCheckToken = await firebase.appCheck().getToken();
+
+    // 1. Fetch Stats
+    const statsRes = await fetch("/api/admin/stats", {
+      headers: {
+        "Authorization": `Bearer ${idToken}`,
+        "X-Firebase-AppCheck": appCheckToken.token
+      }
+    });
+    if (statsRes.ok) {
+      const stats = await statsRes.json();
+      document.getElementById("admin-stat-jobs").innerText = stats.activeJobs;
+      document.getElementById("admin-stat-apps").innerText = stats.totalApplications;
+      document.getElementById("admin-stat-users").innerText = stats.totalUsers || "...";
+      document.getElementById("admin-stat-revenue").innerText = stats.totalRevenue ? `€${stats.totalRevenue.toFixed(2)}` : "€0.00";
+    }
+
+    // 2. Load Jobs for Moderation (Querying Firestore directly as requested)
+    const jobsSnap = await db.collection("jobs").orderBy("createdAt", "desc").get();
+    const tbody = document.getElementById("admin-jobs-body");
+    tbody.innerHTML = "";
+
+    jobsSnap.forEach(doc => {
+      const job = doc.data();
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${job.title}</td>
+        <td>${job.companyName}</td>
+        <td><span class="status-badge status-${job.status}">${job.status}</span></td>
+        <td class="table-actions">
+          <button class="btn-neuro btn-sm" onclick="moderateJob('${doc.id}', 'suspend')" ${job.status === 'suspended' ? 'disabled' : ''}>Suspend</button>
+          <button class="btn-neuro btn-sm btn-danger" onclick="moderateJob('${doc.id}', 'delete')">Delete</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+
+  } catch (err) {
+    console.error("Failed to load admin dashboard:", err);
+    showToast("Error loading admin data.");
+  }
+}
+
+async function moderateJob(jobId, action) {
+  if (!confirm(`Are you sure you want to ${action} this job?`)) return;
+
+  try {
+    const idToken = await currentUser.getIdToken();
+    const appCheckToken = await firebase.appCheck().getToken();
+
+    const res = await fetch("/api/admin/moderate-job", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${idToken}`,
+        "X-Firebase-AppCheck": appCheckToken.token
+      },
+      body: JSON.stringify({ jobId, action })
+    });
+
+    const result = await res.json();
+    if (res.ok) {
+      showToast(result.message);
+      loadAdminDashboardData(); // Refresh list
+    } else {
+      showToast(result.error || "Action failed");
+    }
+  } catch (err) {
+    showToast("Network error during moderation.");
+  }
+}
 
 // ---------------------------------------------------------
 // Utilities

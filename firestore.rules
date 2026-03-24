@@ -21,9 +21,9 @@ service cloud.firestore {
         get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == role;
     }
 
-    function isAdmin()   { return hasRole('ADMIN'); }
-    function isEmployer(){ return hasRole('EMPLOYER'); }
-    function isCandidate(){ return hasRole('CANDIDATE'); }
+    function isAdmin()   { return isSignedIn() && request.auth.token.role == 'ADMIN'; }
+    function isEmployer(){ return isSignedIn() && request.auth.token.role == 'EMPLOYER'; }
+    function isCandidate(){ return isSignedIn() && request.auth.token.role == 'CANDIDATE'; }
 
     // ----------------------------------------------------------
     // USERS (CANDIDATE / EMPLOYER) – each user document lives under /users/{uid}
