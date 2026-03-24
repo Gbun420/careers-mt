@@ -77,6 +77,7 @@ window.switchView = function(view) {
 
   window.location.hash = `#${view}`;
 
+  if (view === "home") loadFeaturedJobs();
   if (view === "jobs") loadJobs();
   if (view === "candidate-applications") loadApplications();
   if (view === "employer-dashboard") loadEmployerDashboard();
@@ -261,6 +262,90 @@ async function loadJobs() {
   } catch (e) {
     container.innerHTML = "<p >Failed to load jobs.</p>";
   }
+}
+
+// Load Featured Jobs for Landing Page
+async function loadFeaturedJobs() {
+  const container = document.getElementById("featured-jobs-container");
+  if (!container) return;
+  
+  // Clear static placeholder jobs
+  container.innerHTML = "<p>Loading featured jobs...</p>";
+  
+  if (!db) {
+    container.innerHTML = "<p>Firebase not configured.</p>";
+    return;
+  }
+  
+  try {
+    const snap = await db.collection("jobs")
+      .where("status", "==", "active")
+      .orderBy("createdAt", "desc")
+      .limit(3)
+      .get();
+      
+    if (snap.empty) {
+      container.innerHTML = "<p>No featured jobs available.</p>";
+      return;
+    }
+    
+    container.innerHTML = "";
+    
+    snap.forEach(doc => {
+      const job = doc.data();
+      const salaryMin = typeof job.salaryMin === "number" ? job.salaryMin : 0;
+      const salaryMax = typeof job.salaryMax === "number" ? job.salaryMax : 0;
+      const salaryLabel = salaryMin && salaryMax
+        ? `€${(salaryMin/1000).toFixed(0)}k-€${(salaryMax/1000).toFixed(0)}k`
+        : "Salary not listed";
+        
+      const card = document.createElement("div");
+      card.className = "job-card-2026";
+      card.innerHTML = `
+        <div class="job-card-2026__header">
+          <div>
+            <h3 class="job-card-2026__title">${job.title || "Untitled Position"}</h3>
+            <p class="job-card-2026__company">${job.companyName || job.companyId || "Company"}</p>
+          </div>
+          <span class="job-card-2026__salary">${salaryLabel}</span>
+        </div>
+        <div class="job-card-2026__meta">
+          <span>📍 ${job.location || "Malta"}</span>
+          <span>💼 ${job.type || "Full-time"}</span>
+          <span>🕒 ${formatTimeAgo(job.createdAt)}</span>
+        </div>
+        <p class="job-card-2026__description">${truncateText(job.description || "", 120)}</p>
+        <button class="btn-neuro w-full job-card-2026__cta" onclick="openApplyModal('${doc.id}')">
+          Apply Now
+        </button>
+      `;
+      container.appendChild(card);
+    });
+  } catch (e) {
+    console.error("Error loading featured jobs:", e);
+    container.innerHTML = "<p>Failed to load featured jobs.</p>";
+  }
+}
+
+// Helper function to format time ago
+function formatTimeAgo(timestamp) {
+  if (!timestamp) return "Recently";
+  const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
+  const now = new Date();
+  const diffMs = now - date;
+  const diffHours = Math.floor(diffMs / (1000 * 60 * 60));
+  const diffDays = Math.floor(diffMs / (1000 * 60 * 60 * 24));
+  
+  if (diffHours < 1) return "Just now";
+  if (diffHours < 24) return `${diffHours}h ago`;
+  if (diffDays < 7) return `${diffDays}d ago`;
+  return "Recently";
+}
+
+// Helper function to truncate text
+function truncateText(text, maxLength) {
+  if (text.length <= maxLength) return text;
+  return text.substring(0, maxLength) + "...";
 }
 
 // Job Search Filtering Logic

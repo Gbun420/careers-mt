@@ -53,38 +53,270 @@
     </nav>
 
     <main class="bento-grid" id="main-view">
-        <!-- 🧭 LANDING PAGE -->
-        <section class="bento-card hero-bento active-view page-view" id="home">
-            <div class="hero-content">
-                <h1>Find jobs in Malta. <br>Get hired <span>faster</span>.</h1>
-                <p>Smart matching. No ghosting. Real opportunities.</p>
-                <div class="gateway-actions mt-2 gateway-actions-left">
-                    <button class="btn-neuro" onclick="switchView('jobs')">Find Jobs</button>
-                    <button class="btn-neuro btn-secondary" onclick="switchView('employer-home')">Hire Talent</button>
+        <!-- 🧭 LANDING PAGE 2026 -->
+        <section class="landing-page active-view page-view" id="home">
+            <!-- Hero Section - Above the fold -->
+            <div class="hero-2026">
+                <div class="container">
+                    <div class="hero-2026__badge">
+                        <span>🚀</span> Malta's #1 Job Platform
+                    </div>
+                    
+                    <h1 class="hero-2026__title">
+                        Get hired in Malta <span>40% faster</span> with AI-powered matching
+                    </h1>
+                    
+                    <p class="hero-2026__subtitle">
+                        Connect with 50+ top Maltese companies. Upload your CV once, get matched with perfect opportunities, and apply with one click. No ghosting, real results.
+                    </p>
+                    
+                    <div class="hero-2026__cta-group">
+                        <button class="btn-neuro hero-2026__cta" onclick="switchView('jobs')">
+                            Find Your Dream Job
+                        </button>
+                        <button class="btn-neuro hero-2026__cta hero-2026__cta-secondary" onclick="switchView('employer-home')">
+                            Hire Top Talent
+                        </button>
+                    </div>
+                    
+                    <!-- Trust Signals Above Fold -->
+                    <div class="trust-signals">
+                        <div class="trust-signal">
+                            <span class="trust-signal__number">500+</span>
+                            <span class="trust-signal__label">Candidates Placed</span>
+                        </div>
+                        <div class="trust-signal">
+                            <span class="trust-signal__number">50+</span>
+                            <span class="trust-signal__label">Maltese Companies</span>
+                        </div>
+                        <div class="trust-signal">
+                            <span class="trust-signal__number">4.8/5</span>
+                            <span class="trust-signal__label">Candidate Rating</span>
+                        </div>
+                        <div class="trust-signal">
+                            <span class="trust-signal__number">48h</span>
+                            <span class="trust-signal__label">Avg. Response Time</span>
+                        </div>
+                    </div>
+                    
+                    <!-- Company Logos -->
+                    <div class="company-logos">
+                        <div class="company-logo">Booking.com</div>
+                        <div class="company-logo">Playtech</div>
+                        <div class="company-logo">Bet365</div>
+                        <div class="company-logo">LeoVegas</div>
+                        <div class="company-logo">KPMG</div>
+                    </div>
                 </div>
             </div>
             
-            <div class="social-proof mt-2">
-                <p class="">Trusted by the community: <strong>500+</strong> candidates placed | <strong>50+</strong> Maltese companies hiring</p>
+            <!-- How It Works Section -->
+            <div class="how-it-works-2026">
+                <div class="section-header">
+                    <h2 class="section-header__title">How careers.mt works</h2>
+                    <p class="section-header__subtitle">
+                        Three simple steps to your next opportunity in Malta. Our AI matches you with roles that fit your skills, experience, and career goals.
+                    </p>
+                </div>
+                
+                <div class="steps-grid">
+                    <div class="step-card">
+                        <div class="step-card__number">1</div>
+                        <h3 class="step-card__title">Upload Your CV</h3>
+                        <p class="step-card__description">
+                            Upload your CV once. Our AI extracts your skills, experience, and preferences to create your professional profile.
+                        </p>
+                    </div>
+                    
+                    <div class="step-card">
+                        <div class="step-card__number">2</div>
+                        <h3 class="step-card__title">Get Matched Instantly</h3>
+                        <p class="step-card__description">
+                            Our algorithm matches you with relevant opportunities from 50+ Maltese companies. No more searching through irrelevant listings.
+                        </p>
+                    </div>
+                    
+                    <div class="step-card">
+                        <div class="step-card__number">3</div>
+                        <h3 class="step-card__title">Apply with One Click</h3>
+                        <p class="step-card__description">
+                            Found your perfect match? Apply with one click. Track your applications in real-time and get responses within 48 hours.
+                        </p>
+                    </div>
+                </div>
             </div>
             
-            <div class="how-it-works mt-2">
-                <div>
-                    <h4 class="section-title-primary">For Candidates</h4>
-                    <ol class="steps-list">
-                        <li>Upload CV</li>
-                        <li>Get matched</li>
-                        <li>Apply in 1 click</li>
-                    </ol>
+            <!-- Featured Jobs Section -->
+            <div class="featured-jobs">
+                <div class="section-header">
+                    <h2 class="section-header__title">Featured Opportunities</h2>
+                    <p class="section-header__subtitle">
+                        Discover the latest positions from Malta's top employers. Updated daily with new opportunities.
+                    </p>
                 </div>
-                <div>
-                    <h4 class="section-title-accent">For Employers</h4>
-                    <ol class="steps-list">
-                        <li>Create job</li>
-                        <li>Set budget</li>
-                        <li>Receive qualified applicants</li>
-                    </ol>
+                
+                <div class="jobs-grid" id="featured-jobs-container">
+                    <!-- Jobs will be injected here by JavaScript -->
+                    <div class="job-card-2026">
+                        <div class="job-card-2026__header">
+                            <div>
+                                <h3 class="job-card-2026__title">Senior Frontend Developer</h3>
+                                <p class="job-card-2026__company">Booking.com Malta</p>
+                            </div>
+                            <span class="job-card-2026__salary">€45k-€60k</span>
+                        </div>
+                        <div class="job-card-2026__meta">
+                            <span>📍 Sliema</span>
+                            <span>💼 Full-time</span>
+                            <span>🕒 Posted 2h ago</span>
+                        </div>
+                        <p class="job-card-2026__description">
+                            Join our dynamic team building next-generation travel experiences. 5+ years React experience required.
+                        </p>
+                        <button class="btn-neuro w-full job-card-2026__cta" onclick="switchView('jobs')">
+                            View Details
+                        </button>
+                    </div>
+                    
+                    <div class="job-card-2026">
+                        <div class="job-card-2026__header">
+                            <div>
+                                <h3 class="job-card-2026__title">Product Manager</h3>
+                                <p class="job-card-2026__company">Playtech</p>
+                            </div>
+                            <span class="job-card-2026__salary">€50k-€70k</span>
+                        </div>
+                        <div class="job-card-2026__meta">
+                            <span>📍 Valletta</span>
+                            <span>💼 Full-time</span>
+                            <span>🕒 Posted 1d ago</span>
+                        </div>
+                        <p class="job-card-2026__description">
+                            Lead product development for our innovative gaming platform. Agile experience essential.
+                        </p>
+                        <button class="btn-neuro w-full job-card-2026__cta" onclick="switchView('jobs')">
+                            View Details
+                        </button>
+                    </div>
+                    
+                    <div class="job-card-2026">
+                        <div class="job-card-2026__header">
+                            <div>
+                                <h3 class="job-card-2026__title">Data Scientist</h3>
+                                <p class="job-card-2026__company">Bet365</p>
+                            </div>
+                            <span class="job-card-2026__salary">€40k-€55k</span>
+                        </div>
+                        <div class="job-card-2026__meta">
+                            <span>📍 Remote</span>
+                            <span>💼 Full-time</span>
+                            <span>🕒 Posted 3d ago</span>
+                        </div>
+                        <p class="job-card-2026__description">
+                            Analyze large datasets to drive business decisions. Python, SQL, and machine learning required.
+                        </p>
+                        <button class="btn-neuro w-full job-card-2026__cta" onclick="switchView('jobs')">
+                            View Details
+                        </button>
+                    </div>
                 </div>
+                
+                <div style="text-align: center; margin-top: 3rem;">
+                    <button class="btn-neuro" onclick="switchView('jobs')" style="min-width: 200px;">
+                        View All Jobs
+                    </button>
+                </div>
+            </div>
+            
+            <!-- For Employers Section -->
+            <div class="for-employers">
+                <div class="employers-content">
+                    <h2>Hire Malta's top talent</h2>
+                    <p>
+                        Join 50+ Maltese companies using careers.mt to find qualified candidates. Our AI matches you with professionals who have the exact skills you need.
+                    </p>
+                    
+                    <div class="employers-features">
+                        <div class="employer-feature">
+                            <h4>AI-Powered Matching</h4>
+                            <p>Our algorithm matches candidates to your job requirements with 94% accuracy.</p>
+                        </div>
+                        <div class="employer-feature">
+                            <h4>Qualified Applicants Only</h4>
+                            <p>Screen candidates with knockout questions. Only see applicants who meet your criteria.</p>
+                        </div>
+                        <div class="employer-feature">
+                            <h4>Transparent Pricing</h4>
+                            <p>Pay per qualified applicant (€12) or per interview (€250). No hidden fees.</p>
+                        </div>
+                    </div>
+                    
+                    <button class="btn-neuro btn-secondary" onclick="switchView('employer-home')" style="min-width: 250px;">
+                        Post Your First Job Free
+                    </button>
+                </div>
+            </div>
+            
+            <!-- Testimonials Section -->
+            <div class="testimonials">
+                <div class="section-header">
+                    <h2 class="section-header__title">Success Stories</h2>
+                    <p class="section-header__subtitle">
+                        Hear from candidates and employers who found their perfect match on careers.mt.
+                    </p>
+                </div>
+                
+                <div class="testimonials-grid">
+                    <div class="testimonial-card">
+                        <p class="testimonial-card__content">
+                            "I found my dream job at Booking.com within 2 weeks of uploading my CV. The matching was spot-on, and the application process was seamless."
+                        </p>
+                        <div class="testimonial-card__author">
+                            <div class="testimonial-card__avatar">AM</div>
+                            <div class="testimonial-card__info">
+                                <h5>Anne Marie</h5>
+                                <p>Senior Developer, Booking.com</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="testimonial-card">
+                        <p class="testimonial-card__content">
+                            "We've hired 12 qualified developers through careers.mt. The quality of candidates is exceptional, and we save 40 hours per month on screening."
+                        </p>
+                        <div class="testimonial-card__author">
+                            <div class="testimonial-card__avatar">MK</div>
+                            <div class="testimonial-card__info">
+                                <h5>Mark Kane</h5>
+                                <p>HR Director, Playtech Malta</p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="testimonial-card">
+                        <p class="testimonial-card__content">
+                            "As a career changer, I was worried about finding relevant opportunities. careers.mt matched me with roles that valued my transferable skills."
+                        </p>
+                        <div class="testimonial-card__author">
+                            <div class="testimonial-card__avatar">JB</div>
+                            <div class="testimonial-card__info">
+                                <h5>Jessica Borg</h5>
+                                <p>Product Manager, LeoVegas</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Final CTA Section -->
+            <div class="final-cta">
+                <h2>Ready to find your next opportunity?</h2>
+                <p>
+                    Join 500+ professionals who've found their perfect match in Malta. Upload your CV today and get matched with opportunities that fit your skills and goals.
+                </p>
+                <button class="btn-neuro" onclick="switchView('jobs')" style="min-width: 250px;">
+                    Upload Your CV Now
+                </button>
             </div>
         </section>
 
